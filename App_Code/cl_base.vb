@@ -135,54 +135,63 @@ Public Class cl_base
         Return dataSet
 
     End Function
-    Sub loadAccount()
+    Function loadSession(Optional pwd As String = "") As String
+        Dim message = ""
         Dim appSettings As NameValueCollection = ConfigurationManager.AppSettings
-        'dynamic account
-        contentOfsequoiaCon = appSettings.Item("sequoia")
-        Session("sequoia") = contentOfsequoiaCon
+        pwd = appSettings("password")
+        If pwd <> "" Then
+            Session("nodeList") = appSettings("wellknownNode")
+            Session("Sequoia") = appSettings("Sequoia")
+            Session("myNode") = appSettings("myNode")
+            Session("myEd") = appSettings("myEd")
 
-        Dim x = Request.Url.Authority & Request.ApplicationPath
-        If x.Substring(Len(x) - 1, 1) = "/" Then x = x.Substring(0, Len(x) - 1)
+            Dim sqlstr = "declare @hostGUID uniqueidentifier; exec wallet_login 'live', '" & Session("myEd") & "', '" & pwd & "', @issilent=0"
+            Dim ds As DataSet = SelectSqlSrvRows(sqlstr, Session("Sequoia"))
+            If ds.Tables.Count > 0 Then
+                Session("d") = ds.Tables(0).Rows(0).Item("d")
+                Session("ct") = ds.Tables(0).Rows(0).Item("ct")
+                Session("qt") = ds.Tables(0).Rows(0).Item("qt")
+            End If
+            Dim hostguid = runSQLwithResult(sqlstr, Session("Sequoia"))
+            If GetServerIPAddress() = GetClientIPAddress() Then
+                If hostguid <> "" Then
+                    Session("ed") = getQueryVar("ed")
+                    'Session("pwd") = getQueryVar("pwd")
+                    message = "Start-Success"
+                    'result = "<hostguid>" & hostguid & "</hostguid>"
+                    Session("hostGUID") = hostguid
+                Else
+                    message = "Start-Failed"
+                End If
+            Else
+                message = "Start-Invalid"
+            End If
+        Else
+            message = "Start-Required"
+        End If
+        Return message
+    End Function
 
-        Dim sqlstr = "select accountid from acctinfo a inner join acct b on a.accountguid=b.accountguid where infokey='address' and infovalue like '%" & x & "%'"
-        contentOfaccountId = runSQLwithResult(sqlstr, Session("sequoia"))
-
-        sqlstr = "exec core.info_acct '" & contentOfaccountId & "', 'ODBC'"
-        contentOfdbODBC = runSQLwithResult(sqlstr, contentOfsequoiaCon)
-
-        sqlstr = "exec core.info_acct '" & contentOfaccountId & "', 'themeCode'"
-        contentOfthemeFolder = runSQLwithResult(sqlstr, contentOfsequoiaCon)
-
-        sqlstr = "exec core.info_acct '" & contentOfaccountId & "', 'frontPage'"
-        contentOffrontPage = runSQLwithResult(sqlstr, contentOfsequoiaCon)
-
-        sqlstr = "exec core.info_acct '" & contentOfaccountId & "', 'signinPage'"
-        contentOfsigninPage = runSQLwithResult(sqlstr, contentOfsequoiaCon)
-
-        'dynamic account
-        Dim ret As String = contentOfsequoiaCon.Replace(" ", "")
-        ret = ret.Substring(ret.Replace(" ", "").IndexOf("atalog") + 7)
-        ret = ret.Substring(0, ret.IndexOf(";"))
-        contentOfsqDB = ret
-    End Sub
     Sub writeLog(logMessage As String)
         Dim path = Server.MapPath("~/")
-        path = path.Substring(0, Len(path) - 5) & "log\"
-        Dim logFilepath = path & DateTime.Now().Year & "\" & Right("0" & DateTime.Now().Month, 2) & "\" & Right("0" & DateTime.Now().Day, 2) & ".txt"
-        Dim logPath = path & DateTime.Now().Year & "\" & Right("0" & DateTime.Now().Month, 2) & "\"
+        path = path & "log\"
+        If logMessage <> "" Then
+            Dim logFilepath = path & DateTime.Now().Year & "\" & Right("0" & DateTime.Now().Month, 2) & "\" & Right("0" & DateTime.Now().Day, 2) & ".txt"
+            Dim logPath = path & DateTime.Now().Year & "\" & Right("0" & DateTime.Now().Month, 2) & "\"
 
-        If (Not System.IO.Directory.Exists(logPath)) Then
-            System.IO.Directory.CreateDirectory(logPath)
+            If (Not System.IO.Directory.Exists(logPath)) Then
+                System.IO.Directory.CreateDirectory(logPath)
+            End If
+            Try
+                Using w As StreamWriter = File.AppendText(logFilepath)
+                    w.Write(vbCrLf + "Log Entry : ")
+                    w.WriteLine("{0} {1}: " + vbCrLf + "{2}", DateTime.Now.ToLongTimeString(), DateTime.Now.ToLongDateString(), logMessage)
+                End Using
+
+            Catch ex As Exception
+
+            End Try
         End If
-        Try
-            Using w As StreamWriter = File.AppendText(logFilepath)
-                w.Write(vbCrLf + "Log Entry : ")
-                w.WriteLine("{0} {1}: " + vbCrLf + "{2}", DateTime.Now.ToLongTimeString(), DateTime.Now.ToLongDateString(), logMessage)
-            End Using
-
-        Catch ex As Exception
-
-        End Try
     End Sub
     Function getQueryVar(key As String) As String
         Dim r = ""
