@@ -8,40 +8,16 @@ Partial Class api_Default
         Dim mode = getQueryVar("mode")
         Dim message = "", result = ""
         If Session("Sequoia") = "" Then
-            message = "Start-Required"
+            If loadSession() <> "Start-Success" Then
+                message = "Start-Required"
+            End If
         End If
 
         Select Case mode.ToLower()
             Case "start"
                 Dim pwd = getQueryVar("pwd")
+                message = loadSession(pwd)
 
-                Dim appSettings As NameValueCollection = ConfigurationManager.AppSettings
-                Session("nodeList") = appSettings("wellknownNode")
-                Session("Sequoia") = appSettings("Sequoia")
-                Session("myNode") = appSettings("myNode")
-                Session("myEd") = appSettings("myEd")
-
-                Dim sqlstr = "declare @hostGUID uniqueidentifier; exec login 'live', '" & Session("myEd") & "', '" & pwd & "', @issilent=0"
-                Dim ds As DataSet = SelectSqlSrvRows(sqlstr, Session("Sequoia"))
-                If ds.Tables.Count > 0 Then
-                    Session("d") = ds.Tables(0).Rows(0).Item("d")
-                    Session("ct") = ds.Tables(0).Rows(0).Item("ct")
-                    Session("qt") = ds.Tables(0).Rows(0).Item("qt")
-                End If
-                Dim hostguid = runSQLwithResult(sqlstr, Session("Sequoia"))
-                If GetServerIPAddress() = GetClientIPAddress() Then
-                    If hostguid <> "" Then
-                        Session("ed") = getQueryVar("ed")
-                        'Session("pwd") = getQueryVar("pwd")
-                        message = "Start-Success"
-                        'result = "<hostguid>" & hostguid & "</hostguid>"
-                        Session("hostGUID") = hostguid
-                    Else
-                        message = "Start-Failed"
-                    End If
-                Else
-                    message = "Start-Invalid"
-                End If
             Case "shakehand"
                 Dim yourNodes = getQueryVar("nodeList").Split(",")
                 Dim myNodes = Session("nodeList")
@@ -54,11 +30,25 @@ Partial Class api_Default
                 Dim qt = Session("qt")
                 result = "<nodes>" & myNodes & "</nodes><qt>" & qt & "</qt>"
             Case "reqheader"
-
             Case "reqblock"
             Case "reqsuspect"
-            Case "sendnewtrx"
+            Case "submittrx"
+                Dim appSettings As NameValueCollection = ConfigurationManager.AppSettings
+                Dim pwd = appSettings("password")
+
+                Dim trx = IIf(IsNothing(Request.Form("trx")), "", Request.Form("trx"))
+                trx = trx.Replace("%26lt;", "<").Replace("%26gt;", ">").Replace("%26", "&").Replace("&lt;", "<").Replace("&gt;", ">").replace("%2b", "+")
+                writeLog(trx)
+                Dim sqlstr = "exec [node_getSubmitTrx] '" & trx & "'; exec node_fillNewBlock 'live', '" & Session("myED") & "', '" & pwd & "'"
+
+                message = runSQLwithResult(sqlstr, Session("Sequoia"))
+
+                If message = "" Then
+                    message = "Incorrect-Data"
+                End If
             Case "sendnewblock"
+            Case Else
+                message = "Invalid-Command"
         End Select
         Response.ContentType = "text/xml"
         Response.Write("<?xml version=""1.0"" encoding=""utf-8""?>")
