@@ -4,4 +4,5 @@ packages/
 publish/
 My Project/
 .vs/
+log/
 web.config
