@@ -140,7 +140,7 @@ Public Class cl_base
         Dim appSettings As NameValueCollection = ConfigurationManager.AppSettings
         pwd = appSettings("password")
         If pwd <> "" Then
-            Session("nodeList") = appSettings("wellknownNode")
+            Session("wellknownNode") = appSettings("wellknownNode")
             Session("Sequoia") = appSettings("Sequoia")
             Session("myNode") = appSettings("myNode")
             Session("myEd") = appSettings("myEd")
