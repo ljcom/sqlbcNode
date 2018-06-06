@@ -6,7 +6,7 @@ Partial Class api_Default
 
     Private Sub api_Default_Load(sender As Object, e As EventArgs) Handles Me.Load
         Dim mode = getQueryVar("mode")
-        Dim message = "Start-Required", result = ""
+        Dim message = "", result = ""
         If Session("Sequoia") = "" Then
             loadSession()
         End If
@@ -59,6 +59,28 @@ Partial Class api_Default
                 End If
             Case "reqsuspect"
                 If message = "" Then
+                    message = "Incorrect-Data"
+                End If
+            'Case "reqtrxheader"
+            '    Dim header = IIf(IsNothing(Request.Form("header")), "", Request.Form("header"))
+            '    header = header.Replace("%26lt;", "<").Replace("%26gt;", ">").Replace("%26", "&").Replace("&lt;", "<").Replace("&gt;", ">").replace("%2b", "+")
+            '    writeLog(header)
+            '    Dim sqlstr = "exec [node_serveReqTrxHeader] '" & header & "'"
+
+            '    result = runSQLwithResult(sqlstr, Session("Sequoia"))
+
+            '    If result = "" Then
+            '        message = "Incorrect-Data"
+            '    End If
+            Case "reqtrx"
+                Dim trxList = IIf(IsNothing(Request.Form("trxList")), "", Request.Form("trxList"))
+                trxList = trxList.Replace("%26lt;", "<").Replace("%26gt;", ">").Replace("%26", "&").Replace("&lt;", "<").Replace("&gt;", ">").replace("%2b", "+")
+                writeLog("trxlist=" & trxList)
+                Dim sqlstr = "exec [node_serveReqTrx] '" & trxList & "'"
+
+                result = getXML(sqlstr, Session("Sequoia"))
+
+                If result = "" Then
                     message = "Incorrect-Data"
                 End If
             Case "submittrx"

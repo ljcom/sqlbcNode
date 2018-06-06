@@ -90,6 +90,8 @@ Public Class cl_base
             myCommand.CommandTimeout = 600
             Dim r As XmlReader = myCommand.ExecuteXmlReader()
 
+            r.Read()
+
             result = r.ReadOuterXml()
 
         Catch ex As SqlException
